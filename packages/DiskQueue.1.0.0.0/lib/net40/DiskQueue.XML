@@ -1,0 +1,570 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>DiskQueue</name>
+    </assembly>
+    <members>
+        <member name="T:DiskQueue.Implementation.Atomic">
+            <summary>
+            Allow to overwrite a file in a transactional manner.
+            That is, either we completely succeed or completely fail in writing to the file.
+            Read will correct previous failed transaction if a previous write has failed.
+            Assumptions:
+             * You want to always rewrite the file, rathar than edit it.
+             * The underlying file system has at least transactional metadata.
+             * Thread safety is provided by the calling code.
+            
+            Write implementation:
+             - Rename file to "[file].old_copy" (overwrite if needed
+             - Create new file stream with the file name and pass it to the client
+             - After client is done, close the stream
+             - Delete old file
+            
+            Read implementation:
+             - If old file exists, remove new file and rename old file
+            
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Atomic.Read(System.String,System.Action{System.IO.Stream})">
+            <summary>
+            Run a read action over a file by name.
+            Access is optimised for sequential scanning.
+            No file share is permitted.
+            </summary>
+            <param name="path">File path to read</param>
+            <param name="action">Action to consume file stream. You do not need to close the stream yourself.</param>
+        </member>
+        <member name="M:DiskQueue.Implementation.Atomic.Write(System.String,System.Action{System.IO.Stream})">
+            <summary>
+            Run a write action to a file.
+            This will always rewrite the file (no appending).
+            </summary>
+            <param name="path">File path to write</param>
+            <param name="action">Action to write into file stream. You do not need to close the stream yourself.</param>
+        </member>
+        <member name="T:DiskQueue.Implementation.Constants">
+            <summary>
+            Magic constants used in the disk queue
+            </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.Constants.OperationSeparator">
+            <summary> Operation end marker </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.Constants.OperationSeparatorBytes">
+            <summary> Bytes of operation end marker </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.Constants.StartTransactionSeparatorGuid">
+            <summary> Start of transaction marker </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.Constants.StartTransactionSeparator">
+            <summary> Bytes of the start of transaction marker </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.Constants.EndTransactionSeparatorGuid">
+            <summary> End of transaction marker </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.Constants.EndTransactionSeparator">
+            <summary> Bytes of end of transaction marker </summary>
+        </member>
+        <member name="T:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions">
+            <summary>
+            Unix file system permission flags
+            </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_ISUID">
+            <summary> Set-user-ID on execution </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_ISGID">
+            <summary> Set-group-ID on execution </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_ISVTX">
+            <summary> On directories, restricted deletion flag </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IRUSR">
+            <summary> Read permission, owner </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IWUSR">
+            <summary> Write permission, owner </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IXUSR">
+            <summary> Execute/search permission, owner </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IRGRP">
+            <summary> Read permission, group </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IWGRP">
+            <summary> Write permission, group </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IXGRP">
+            <summary> Execute/search permission, group </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IROTH">
+            <summary> Read permission, others </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IWOTH">
+            <summary> Write permission, others </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IXOTH">
+            <summary> Execute/search permission, others </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IRWXG">
+            <summary> Read, write, search and execute, group </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IRWXU">
+            <summary> Read, write, search and execute, owner </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IRWXO">
+            <summary> Read, write, search and execute, others </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.ACCESSPERMS">
+            <summary> Read, write, search and execute for owner, group and others </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.ALLPERMS">
+            <summary> Restrict delete, set all flags on execute, all permissions to all users </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.DEFFILEMODE">
+            <summary> Read and write, no execute for owner, group and others </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IFMT">
+            <summary> Type of file flag </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IFDIR">
+            <summary> Directory type </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IFCHR">
+            <summary> Character special file type </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IFBLK">
+            <summary> Block special file type </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IFREG">
+            <summary> Regular file type </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IFIFO">
+            <summary> FIFO special file type </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IFLNK">
+            <summary> Symbolic link file type </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions.S_IFSOCK">
+            <summary> Socket file type </summary>
+        </member>
+        <member name="T:DiskQueue.Implementation.CrossPlatform.Unix.UnsafeNativeMethods">
+            <summary>
+            Unix calls
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.CrossPlatform.Unix.UnsafeNativeMethods.chmod(System.String,DiskQueue.Implementation.CrossPlatform.Unix.UnixFilePermissions)">
+            <summary>
+            "Change Mode" -- sets file permissions in Linux / Unix.
+            </summary>
+            <param name="path">Path to set</param>
+            <param name="mode">Permissions mode flags</param>
+            <returns>System result status</returns>
+        </member>
+        <member name="T:DiskQueue.Implementation.Entry">
+            <summary>
+            Internal storage file entry
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Entry.#ctor(System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Represents an entry in a file by file number, position and span
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Entry.#ctor(DiskQueue.Implementation.Operation)">
+            <summary>
+            Map a queue/log operation to a file entry
+            </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.Entry.Data">
+            <summary>
+            The actual data for this entry. 
+            This only has value coming _out_ of the queue.
+            </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.Entry.FileNumber">
+            <summary> File number </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.Entry.Start">
+            <summary> offset of start of entry in file </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.Entry.Length">
+            <summary> length of entry on disk </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Entry.Equals(DiskQueue.Implementation.Entry)">
+            <summary>
+            Compare this entry to other for exact equality
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Entry.Equals(System.Object)">
+            <summary>
+            Compare this entry to other for exact equality
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Entry.GetHashCode">
+            <summary>
+            Storage hash code
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Entry.op_Equality(DiskQueue.Implementation.Entry,DiskQueue.Implementation.Entry)">
+            <summary>
+            Compare entries by value
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Entry.op_Inequality(DiskQueue.Implementation.Entry,DiskQueue.Implementation.Entry)">
+            <summary>
+            Compare entries by value
+            </summary>
+        </member>
+        <member name="T:DiskQueue.Implementation.Extensions">
+            <summary>
+            Internal extension methods
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Extensions.GetOrCreateValue``2(System.Collections.Generic.IDictionary{``1,``0},``1)">
+            <summary>
+            Ensure a key is present in the dictionary. Uses default value if needed.
+            Return stored value for the key
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Extensions.GetValueOrDefault``2(System.Collections.Generic.IDictionary{``1,``0},``1)">
+            <summary>
+            Return value for key if present, otherwise return default.
+            No new keys or values will be added to the dictionary.
+            </summary>
+        </member>
+        <member name="T:DiskQueue.Implementation.Operation">
+            <summary>
+            Represents an operation on a specific file, with location and span.
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.Operation.#ctor(DiskQueue.Implementation.OperationType,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Create a new operation specification
+            </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.Operation.Type">
+            <summary> Operation type </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.Operation.FileNumber">
+            <summary> File number in the persistent queue file set </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.Operation.Start">
+            <summary> Offset within the file </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.Operation.Length">
+            <summary> Length of data </summary>
+        </member>
+        <member name="T:DiskQueue.Implementation.OperationType">
+            <summary>
+            Type of change applicable to a queue
+            </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.OperationType.Enqueue">
+            <summary> Add new data to the queue </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.OperationType.Dequeue">
+            <summary> Retrieve and remove data from a queue </summary>
+        </member>
+        <member name="F:DiskQueue.Implementation.OperationType.Reinstate">
+            <summary> Revert a dequeue. Data will remain present on the queue </summary>
+        </member>
+        <member name="T:DiskQueue.Implementation.PendingWriteException">
+            <summary>
+            Exception thrown when data can't be persisted
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PendingWriteException.#ctor(System.Exception[])">
+            <summary>
+            Aggregate causing exceptions
+            </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.PendingWriteException.PendingWritesExceptions">
+            <summary>
+            Set of causing exceptions
+            </summary>
+        </member>
+        <member name="P:DiskQueue.Implementation.PendingWriteException.Message">
+            <summary>
+            Gets a message that describes the current exception.
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PendingWriteException.ToString">
+            <summary>
+            Creates and returns a string representation of the current exception.
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PendingWriteException.GetObjectData(System.Runtime.Serialization.SerializationInfo,System.Runtime.Serialization.StreamingContext)">
+            <summary>
+            Sets the <see cref="T:System.Runtime.Serialization.SerializationInfo"/> with information about the exception.
+            </summary>
+            <param name="info">The <see cref="T:System.Runtime.Serialization.SerializationInfo"/> that holds the serialized object data about the exception being thrown. </param><param name="context">The <see cref="T:System.Runtime.Serialization.StreamingContext"/> that contains contextual information about the source or destination. </param><exception cref="T:System.ArgumentNullException">The <paramref name="info"/> parameter is a null reference (Nothing in Visual Basic). </exception><filterpriority>2</filterpriority><PermissionSet><IPermission class="System.Security.Permissions.FileIOPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Read="*AllFiles*" PathDiscovery="*AllFiles*"/><IPermission class="System.Security.Permissions.SecurityPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" Flags="SerializationFormatter"/></PermissionSet>
+        </member>
+        <member name="P:DiskQueue.Implementation.PersistentQueueImpl.ParanoidFlushing">
+            <summary>
+            <para>Setting this to false may cause unexpected data loss in some failure conditions.</para>
+            <para>Defaults to true.</para>
+            <para>If true, each transaction commit will flush the transaction log.</para>
+            <para>This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)</para>
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PersistentQueueImpl.ReadAhead">
+            <summary>
+            Assumes that entries has at least one entry
+            </summary>
+        </member>
+        <member name="T:DiskQueue.Implementation.PersistentQueueSession">
+            <summary>
+            Default persistent queue session.
+            <para>You should use <see cref="M:DiskQueue.IPersistentQueue.OpenSession"/> to get a session.</para>
+            <example>using (var q = PersistentQueue.WaitFor("myQueue")) using (var session = q.OpenSession()) { ... }</example>
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PersistentQueueSession.#ctor(DiskQueue.IPersistentQueueImpl,System.IO.Stream,System.Int32)">
+            <summary>
+            Create a default persistent queue session.
+            <para>You should use <see cref="M:DiskQueue.IPersistentQueue.OpenSession"/> to get a session.</para>
+            <example>using (var q = PersistentQueue.WaitFor("myQueue")) using (var session = q.OpenSession()) { ... }</example>
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PersistentQueueSession.Enqueue(System.Byte[])">
+            <summary>
+            Queue data for a later decode. Data is written on `Flush()`
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PersistentQueueSession.Dequeue">
+            <summary>
+            Try to pull data from the queue. Data is removed from the queue on `Flush()`
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PersistentQueueSession.Flush">
+            <summary>
+            Commit actions taken in this session since last flush.
+            If the session is disposed with no flush, actions are not persisted 
+            to the queue (Enqueues are not written, dequeues are left on the queue)
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PersistentQueueSession.Dispose">
+            <summary>
+            Close session, restoring any non-flushed operations
+            </summary>
+        </member>
+        <member name="M:DiskQueue.Implementation.PersistentQueueSession.Finalize">
+            <summary>
+            Dispose queue on destructor. This is a safty-valve. You should ensure you
+            dispose of sessions normally.
+            </summary>
+        </member>
+        <member name="T:DiskQueue.SetPermissions">
+            <summary>
+            File permission tools for Windows and Linux
+            </summary>
+        </member>
+        <member name="P:DiskQueue.SetPermissions.RunningUnderPosix">
+            <summary>
+            True if running in a Posix environment, false if Windows or unknown.
+            </summary>
+        </member>
+        <member name="M:DiskQueue.SetPermissions.AllowReadWriteForAll(System.String)">
+            <summary>
+            Set read-write access for all users, or throw an exception
+            if not possible
+            </summary>
+        </member>
+        <member name="M:DiskQueue.SetPermissions.TryAllowReadWriteForAll(System.String)">
+            <summary>
+            Set read-write access for all users, or ignore if not possible
+            </summary>
+        </member>
+        <member name="T:DiskQueue.IPersistentQueue">
+            <summary>
+            A queue tied to a specific persistent storage backing.
+            Enqueue and dequeue operations happen within sessions.
+            <example>using (var session = q.OpenSession()) {...}</example>
+            Queue should be disposed after use. This will NOT destroy the backing storage.
+            </summary>
+        </member>
+        <member name="M:DiskQueue.IPersistentQueue.OpenSession">
+            <summary>
+            Open an read/write session
+            </summary>
+        </member>
+        <member name="P:DiskQueue.IPersistentQueue.EstimatedCountOfItemsInQueue">
+            <summary>
+            Returns the number of items in the queue, but does not include items added or removed
+            in currently open sessions.
+            </summary>
+        </member>
+        <member name="P:DiskQueue.IPersistentQueue.Internals">
+            <summary>
+            Internal adjustables. Use with caution. Read the source code.
+            </summary>
+        </member>
+        <member name="P:DiskQueue.IPersistentQueue.MaxFileSize">
+            <summary>
+            Maximum size of files in queue. New files will be rolled-out if this is exceeded.
+            (i.e. this is NOT the maximum size of the queue)
+            </summary>
+        </member>
+        <member name="T:DiskQueue.IPersistentQueueImpl">
+            <summary>
+            Wrapper for exposing some inner workings of the persistent queue.
+            <para>You should be careful using any of these methods</para>
+            <para>Please read the source code before using these methods in production software</para>
+            </summary>
+        </member>
+        <member name="M:DiskQueue.IPersistentQueueImpl.AcquireWriter(System.IO.Stream,System.Func{System.IO.Stream,System.Int64},System.Action{System.IO.Stream})">
+            <summary>
+            <para>UNSAFE. Incorrect use will result in data loss.</para>
+            Lock and process a data file writer at the current write head.
+            <para>This will create new files if max size is exceeded</para>
+            </summary>
+            <param name="stream">Stream to write</param>
+            <param name="action">Writing action</param>
+            <param name="onReplaceStream">Continuation action if a new file is created</param>
+        </member>
+        <member name="M:DiskQueue.IPersistentQueueImpl.CommitTransaction(System.Collections.Generic.ICollection{DiskQueue.Implementation.Operation})">
+            <summary>
+            <para>UNSAFE. Incorrect use will result in data loss.</para>
+            Commit a sequence of operations to storage
+            </summary>
+        </member>
+        <member name="M:DiskQueue.IPersistentQueueImpl.Dequeue">
+            <summary>
+            <para>UNSAFE. Incorrect use will result in data loss.</para>
+            Dequeue data, returning storage entry
+            </summary>
+        </member>
+        <member name="M:DiskQueue.IPersistentQueueImpl.Reinstate(System.Collections.Generic.IEnumerable{DiskQueue.Implementation.Operation})">
+            <summary>
+            <para>UNSAFE. Incorrect use will result in data loss.</para>
+            <para>Undo Enqueue and Dequeue operations.</para>
+            <para>These MUST have been real operations taken.</para>
+            </summary>
+        </member>
+        <member name="P:DiskQueue.IPersistentQueueImpl.CurrentFileNumber">
+            <summary>
+            <para>Safe, available for tests and performance.</para>
+            <para>Current writing file number</para>
+            </summary>
+        </member>
+        <member name="P:DiskQueue.IPersistentQueueImpl.TrimTransactionLogOnDispose">
+            <summary>
+            <para>Safe, available for tests and performance.</para>
+            <para>If true, trim and flush waiting transactions on dispose</para>
+            </summary>
+        </member>
+        <member name="P:DiskQueue.IPersistentQueueImpl.ParanoidFlushing">
+            <summary>
+            <para>Setting this to false may cause unexpected data loss in some failure conditions.</para>
+            <para>Defaults to true.</para>
+            <para>If true, each transaction commit will flush the transaction log.</para>
+            <para>This is slow, but ensures the log is correct per transaction in the event of a hard termination (i.e. power failure)</para>
+            </summary>
+        </member>
+        <member name="T:DiskQueue.IPersistentQueueSession">
+            <summary>
+            Queue session (exclusive use of the queue to add or remove items)
+            The queue session should be wrapped in a `using`, as it must be disposed.
+            If you are sharing access, you should hold the queue session for as little time as possible.
+            </summary>
+        </member>
+        <member name="M:DiskQueue.IPersistentQueueSession.Enqueue(System.Byte[])">
+            <summary>
+            Queue data for a later decode. Data is written on `Flush()`
+            </summary>
+        </member>
+        <member name="M:DiskQueue.IPersistentQueueSession.Dequeue">
+            <summary>
+            Try to pull data from the queue. Data is removed from the queue on `Flush()`
+            </summary>
+        </member>
+        <member name="M:DiskQueue.IPersistentQueueSession.Flush">
+            <summary>
+            Commit actions taken in this session since last flush.
+            If the session is disposed with no flush, actions are not persisted 
+            to the queue (Enqueues are not written, dequeues are left on the queue)
+            </summary>
+        </member>
+        <member name="T:DiskQueue.PersistentQueue">
+            <summary>
+            Default persistent queue <see cref="T:DiskQueue.IPersistentQueue"/>
+            <para>This queue establishes exclusive use of the storage until it is disposed.</para>
+            <para>If you wish to share the store between processes, you should use `PersistentQueue.<see cref="M:DiskQueue.PersistentQueue.WaitFor(System.String,System.TimeSpan)"/>`.</para>
+            <para>If you want to share the store between threads in one process, you may share the Persistent Queue and
+            have each thread call `OpenSession` for itself.</para>
+            </summary>
+        </member>
+        <member name="M:DiskQueue.PersistentQueue.WaitFor(System.String,System.TimeSpan)">
+            <summary>
+            Wait a maximum time to open an exclusive session.
+            <para>If sharing storage between processes, the resulting queue should disposed
+            as soon as possible.</para>
+            <para>Throws a TimeoutException if the queue can't be locked in the specified time</para>
+            </summary>
+            <exception cref="T:System.TimeoutException"></exception>
+        </member>
+        <member name="M:DiskQueue.PersistentQueue.#ctor(System.String)">
+            <summary>
+            Create or connect to a persistent store at the given storage path.
+            <para>Throws UnauthorizedAccessException if you do not have read and write permissions.</para>
+            <para>Throws InvalidOperationException if another instance is attached to the backing store.</para>
+            </summary>
+        </member>
+        <member name="M:DiskQueue.PersistentQueue.#ctor(System.String,System.Int32)">
+            <summary>
+            Create or connect to a persistent store at the given storage path.
+            Uses specific maximum file size (files will be split if they exceed this size).
+            Throws UnauthorizedAccessException if you do not have read and write permissions.
+            Throws InvalidOperationException if another instance is attached to the backing store.
+            </summary>
+        </member>
+        <member name="M:DiskQueue.PersistentQueue.Dispose">
+            <summary>
+            Close this queue connection. Does not destroy flushed data.
+            </summary>
+        </member>
+        <member name="M:DiskQueue.PersistentQueue.Finalize">
+            <summary>
+            Dispose of the queue connection on destruction.
+            This is a safety valve. You should ensure you dispose
+            of connections properly.
+            </summary>
+        </member>
+        <member name="M:DiskQueue.PersistentQueue.OpenSession">
+            <summary>
+            Open an read/write session
+            </summary>
+        </member>
+        <member name="P:DiskQueue.PersistentQueue.EstimatedCountOfItemsInQueue">
+            <summary>
+            Returns the number of items in the queue, but does not include items added or removed
+            in currently open sessions.
+            </summary>
+        </member>
+        <member name="P:DiskQueue.PersistentQueue.Internals">
+            <summary>
+            Internal adjustables. Use with caution. Read the source code.
+            </summary>
+        </member>
+        <member name="P:DiskQueue.PersistentQueue.MaxFileSize">
+            <summary>
+            Maximum size of files in queue. New files will be rolled-out if this is exceeded.
+            (i.e. this is NOT the maximum size of the queue)
+            </summary>
+        </member>
+        <member name="P:DiskQueue.PersistentQueue.SuggestedMaxTransactionLogSize">
+            <summary>
+            If the transaction log is near this size, it will be flushed and trimmed.
+            If you set Internals.ParanoidFlushing, this value is ignored.
+            </summary>
+        </member>
+        <member name="P:DiskQueue.PersistentQueue.TrimTransactionLogOnDispose">
+            <summary>
+            Defaults to true.
+            If true, transactions will be flushed and trimmed on Dispose (makes dispose a bit slower)
+            If false, transaction log will be left as-is on Dispose.
+            </summary>
+        </member>
+    </members>
+</doc>
