@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace MsgPackTarget.Properties {
+namespace BatchedWebServiceTarget.Properties {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]

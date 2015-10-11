@@ -7,8 +7,8 @@
     <ProjectGuid>{0D52B023-406B-408D-8624-E03D374E81A3}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>MsgPackTarget</RootNamespace>
-    <AssemblyName>MsgPackTarget</AssemblyName>
+    <RootNamespace>BatchedWebServiceTarget</RootNamespace>
+    <AssemblyName>BatchedWebServiceTarget</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
@@ -40,6 +40,7 @@
   <ItemGroup>
     <Reference Include="DiskQueue">
       <HintPath>..\packages\DiskQueue.1.0.0.0\lib\net40\DiskQueue.dll</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
     <Reference Include="MsgPack">
       <HintPath>..\packages\MsgPack.Cli.0.6.2\lib\net40-client\MsgPack.dll</HintPath>
