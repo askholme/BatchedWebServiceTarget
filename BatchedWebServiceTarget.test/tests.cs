@@ -50,6 +50,8 @@ namespace MsgPackTarget.test
             target.logsPerBatch = 50;
             target.waitBetweenBatch = 300;
             target.waitBetweenConnections = 800;
+            // need to set target to avoid config error
+            target.url = "http://somewhere.fun";
             SimpleConfigurator.ConfigureForTargetLogging(target, LogLevel.Debug);                   
             var count = 140;
             for (int currentSequenceNumber = 0; currentSequenceNumber < count; currentSequenceNumber++)
@@ -59,7 +61,7 @@ namespace MsgPackTarget.test
             Assert.DoesNotThrow(delegate { MockedWebService.Verify(batch => batch.testConnection(), Times.AtLeastOnce()); });
             Assert.DoesNotThrow(delegate {MockedWebService.Verify(batch => batch.sendData(It.IsAny<byte[]>(),It.IsAny<string>()),Times.AtLeast(2));});
 
-            var serializer = MessagePackSerializer.Get<BatchedWebServiceTarget.WebServicePayLoad>();
+            var serializer = MessagePackSerializer.Get<BatchedWebService.WebServicePayLoad>();
             int testCount = 0;
             Dictionary<string, string> log = new Dictionary<string, string>(); ;
             foreach (var batch in batches) {

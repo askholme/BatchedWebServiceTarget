@@ -21,12 +21,7 @@ namespace NLog.Targets
     [Target("BatchedWebServiceTarget")]
     public class BatchedWebServiceTarget : Target
     {
-        public struct WebServicePayLoad
-        {
-            public int version;
-            public List<Dictionary<string, string>> logs;
-            public string id;
-        }
+
         protected IPersistentQueue queue;
         protected Thread backgroundThread;
         protected MessagePackSerializer<Dictionary<String,String>> logEventSerializer;
@@ -35,15 +30,18 @@ namespace NLog.Targets
         public BatchedWebServiceTarget(IBatchWebService WebService = null)
         {
             this.logEventSerializer = MessagePackSerializer.Get<Dictionary<String,String>>();
-            this.logBatchSerializer = MessagePackSerializer.Get<WebServicePayLoad>();
+            this.logBatchSerializer = BatchedWebService.PayLoadSerializer.getSerializer();
             if (WebService == null) {
                 this.webService = new BatchWebService();
             }else {
                 this.webService = WebService;
             }
-            
-            // probably need to set some attributes here
             this.Layout = new DictionaryLayout();
+            this.Layout.Attributes.Add(new DictionaryLayoutAttribute("time", "${longdate}"));
+            this.Layout.Attributes.Add(new DictionaryLayoutAttribute("level", "${level:upperCase=True}"));
+            this.Layout.Attributes.Add(new DictionaryLayoutAttribute("message", "${message}"));
+            this.Layout.Attributes.Add(new DictionaryLayoutAttribute("exception", "${exception:format=ToString,Message,StackTrace}"));
+
         }
 
         [RequiredParameter]
@@ -55,6 +53,9 @@ namespace NLog.Targets
             {
                 throw new NLog.NLogConfigurationException("no filesystem queue path provided to BatchedWebService target");
             }
+            if (this.url == null)
+                throw new NLog.NLogConfigurationException("no URL was provided to BatchedWebService target");
+            this.webService.setUrl(this.url);
             this.queue = new PersistentQueue(this.queuePath);
             this.backgroundThread = new Thread(new ThreadStart(runThread));
             this.backgroundThread.Start();
